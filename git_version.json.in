@@ -1,0 +1,8 @@
+{
+	"version": "@GMS_BUILD_VERSION@",
+	"branch": "@GMS_BUILD_BRANCH@",
+	"tag": "@GMS_BUILD_TAG@",
+	"hash": "@GMS_BUILD_COMMIT_HASH@",
+	"shortHash": "@GMS_BUILD_COMMIT_SHORT@",
+	"timestamp": @GMS_BUILD_TIMESTAMP@
+}

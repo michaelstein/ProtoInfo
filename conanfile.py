@@ -80,6 +80,8 @@ class ProtoInfoConan(ConanFile):
 
 	def imports(self):
 		self.copy("*.so.*", dst="bin", src="lib")
-		self.copy("*.so", dst="bin", src="lib", excludes="plugins/*")
-		self.copy("*.dll", dst="bin", src="bin", excludes="plugins/*")
+		self.copy("*.so", dst="bin", src="lib")
+		self.copy("*.dll", dst="bin", src="bin")
 		self.copy("*.dylib*", dst="bin", src="lib")
+		
+		self.copy("*", dst="bin/plugins", src="plugins", root_package="Qt")

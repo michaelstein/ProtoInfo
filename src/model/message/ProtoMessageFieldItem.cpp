@@ -1,5 +1,123 @@
 #include "ProtoMessageFieldItem.h"
 #include "google/protobuf/text_format.h"
+#include "humblelogging/api.h"
+
+HUMBLE_LOGGER(L, "ProtoMessageFieldItem");
+
+static QString fieldValue(const google::protobuf::Message* message, const google::protobuf::FieldDescriptor* descriptor, const int index = -1)
+{
+	auto* reflection = message->GetReflection();
+	switch(descriptor->type()) {
+		case google::protobuf::FieldDescriptor::TYPE_DOUBLE: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedDouble(*message, descriptor, index));
+			else
+				return QString::number(reflection->GetDouble(*message, descriptor));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_FLOAT: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedDouble(*message, descriptor, index));
+			else
+				return QString::number(reflection->GetDouble(*message, descriptor));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_INT64: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedInt64(*message, descriptor, index));
+			else
+				return QString::number(reflection->GetInt64(*message, descriptor));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_UINT64: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedUInt64(*message, descriptor, index));
+			else
+				return QString::number(reflection->GetUInt64(*message, descriptor));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_INT32: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedInt32(*message, descriptor, index));
+			else
+				return QString::number(reflection->GetInt32(*message, descriptor));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_FIXED64: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedUInt64(*message, descriptor, index));
+			else
+				return QString::number(reflection->GetUInt64(*message, descriptor));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_FIXED32: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedUInt32(*message, descriptor, index));
+			else
+				return QString::number(reflection->GetUInt32(*message, descriptor));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_BOOL: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedBool(*message, descriptor, index));
+			else
+				return reflection->GetBool(*message, descriptor) ? "true" : "false";
+		}
+		case google::protobuf::FieldDescriptor::TYPE_STRING: {
+			if(index > 0)
+				return QString::fromStdString(reflection->GetRepeatedString(*message, descriptor, index));
+			else
+				return QString::fromStdString(reflection->GetString(*message, descriptor));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_GROUP: {
+			break;
+		}
+		case google::protobuf::FieldDescriptor::TYPE_MESSAGE: {
+			if(index > 0) {
+				break;
+			} else {
+				const auto* field = descriptor->message_type();
+				return QString::fromStdString(field->name());
+			}
+		}
+		case google::protobuf::FieldDescriptor::TYPE_BYTES: {
+			const auto valueStr = reflection->GetString(*message, descriptor);
+			QByteArray value(valueStr.data(), valueStr.size());
+			return QString(value.toHex(' '));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_UINT32: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedUInt32(*message, descriptor, index));
+			else
+				return QString::number(reflection->GetUInt32(*message, descriptor));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_ENUM: {
+			if(index > 0)
+				return QString::fromStdString(reflection->GetRepeatedEnum(*message, descriptor, index)->name());
+			else
+				return QString::fromStdString(reflection->GetEnum(*message, descriptor)->name());
+		}
+		case google::protobuf::FieldDescriptor::TYPE_SFIXED32: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedInt32(*message, descriptor, index));
+			else
+				return QString::number(reflection->GetInt32(*message, descriptor));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_SFIXED64: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedInt64(*message, descriptor, index));
+			else
+				return QString::number(reflection->GetInt64(*message, descriptor));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_SINT32: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedInt32(*message, descriptor, index));
+			else
+				return QString::number(reflection->GetInt32(*message, descriptor));
+		}
+		case google::protobuf::FieldDescriptor::TYPE_SINT64: {
+			if(index > 0)
+				return QString::number(reflection->GetRepeatedInt64(*message, descriptor, index));
+			else
+				return QString::number(reflection->GetInt64(*message, descriptor));
+		}
+	}
+
+	return {};
+}
 
 ProtoMessageFieldItem::ProtoMessageFieldItem()
 	: _descriptor(nullptr)
@@ -25,16 +143,24 @@ ProtoMessageFieldItem::ProtoMessageFieldItem(const google::protobuf::FieldDescri
 	} else if (_descriptor->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
 		auto* reflection = message->GetReflection();
 
-		const auto& childMessage = reflection->GetMessage(*message, descriptor);
-		auto* childDescriptor = _descriptor->message_type();
+		const google::protobuf::Message* childMessage = nullptr;
+		try {
+			childMessage = &reflection->GetMessage(*message, descriptor);
+		} catch (const std::exception& e) {
+			HL_ERROR(L, std::string(e.what()));
+		}
 
-		for (auto i = 0; i < childDescriptor->field_count(); i++) {
-			auto* fieldDescriptor = childDescriptor->field(i);
-			if (!fieldDescriptor)
-				continue;
+		if (childMessage) {
+			auto* childDescriptor = _descriptor->message_type();
 
-			auto* child = new ProtoMessageFieldItem(fieldDescriptor, &childMessage, -1, this);
-			appendChild(child);
+			for (auto i = 0; i < childDescriptor->field_count(); i++) {
+				auto* fieldDescriptor = childDescriptor->field(i);
+				if (!fieldDescriptor)
+					continue;
+
+				auto* child = new ProtoMessageFieldItem(fieldDescriptor, childMessage, -1, this);
+				appendChild(child);
+			}
 		}
 	}
 }
@@ -76,114 +202,10 @@ QVariant ProtoMessageFieldItem::data(int column) const
 		if (column == 0) {
 			return QString::fromStdString(_descriptor->name());
 		} else if (column == 1) {
-			auto* reflection = _message->GetReflection();
-			switch (_descriptor->type()) {
-				case google::protobuf::FieldDescriptor::TYPE_DOUBLE: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedDouble(*_message, _descriptor, _index));
-					else
-						return QString::number(reflection->GetDouble(*_message, _descriptor));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_FLOAT: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedDouble(*_message, _descriptor, _index));
-					else
-						return QString::number(reflection->GetDouble(*_message, _descriptor));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_INT64: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedInt64(*_message, _descriptor, _index));
-					else
-						return QString::number(reflection->GetInt64(*_message, _descriptor));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_UINT64: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedUInt64(*_message, _descriptor, _index));
-					else
-						return QString::number(reflection->GetUInt64(*_message, _descriptor));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_INT32: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedInt32(*_message, _descriptor, _index));
-					else
-						return QString::number(reflection->GetInt32(*_message, _descriptor));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_FIXED64: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedUInt64(*_message, _descriptor, _index));
-					else
-						return QString::number(reflection->GetUInt64(*_message, _descriptor));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_FIXED32: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedUInt32(*_message, _descriptor, _index));
-					else
-						return QString::number(reflection->GetUInt32(*_message, _descriptor));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_BOOL: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedBool(*_message, _descriptor, _index));
-					else
-						return reflection->GetBool(*_message, _descriptor) ? "true" : "false";
-				}
-				case google::protobuf::FieldDescriptor::TYPE_STRING: {
-					if (_index > 0)
-						return QString::fromStdString(reflection->GetRepeatedString(*_message, _descriptor, _index));
-					else
-						return QString::fromStdString(reflection->GetString(*_message, _descriptor));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_GROUP: {
-					break;
-				}
-				case google::protobuf::FieldDescriptor::TYPE_MESSAGE: {
-					if (_index > 0) {
-						break;
-					} else {
-						const auto* field = _descriptor->message_type();
-						return QString::fromStdString(field->name());
-					}
-				}
-				case google::protobuf::FieldDescriptor::TYPE_BYTES: {
-					const auto valueStr = reflection->GetString(*_message, _descriptor);
-					QByteArray value(valueStr.data(), valueStr.size());
-						return QString(value.toHex(' '));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_UINT32: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedUInt32(*_message, _descriptor, _index));
-					else
-						return QString::number(reflection->GetUInt32(*_message, _descriptor));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_ENUM: {
-					if (_index > 0)
-						return QString::fromStdString(reflection->GetRepeatedEnum(*_message, _descriptor, _index)->name());
-					else
-						return QString::fromStdString(reflection->GetEnum(*_message, _descriptor)->name());
-				}
-				case google::protobuf::FieldDescriptor::TYPE_SFIXED32: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedInt32(*_message, _descriptor, _index));
-					else
-						return QString::number(reflection->GetInt32(*_message, _descriptor));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_SFIXED64: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedInt64(*_message, _descriptor, _index));
-					else
-						return QString::number(reflection->GetInt64(*_message, _descriptor));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_SINT32: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedInt32(*_message, _descriptor, _index));
-					else
-						return QString::number(reflection->GetInt32(*_message, _descriptor));
-				}
-				case google::protobuf::FieldDescriptor::TYPE_SINT64: {
-					if (_index > 0)
-						return QString::number(reflection->GetRepeatedInt64(*_message, _descriptor, _index));
-					else
-						return QString::number(reflection->GetInt64(*_message, _descriptor));
-				}
+			try {
+				return fieldValue(_message, _descriptor, _index);
+			} catch (const std::exception& e) {
+				return QString::fromLatin1(e.what());
 			}
 		}
 	}

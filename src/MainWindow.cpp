@@ -6,6 +6,7 @@
 #include "model/type/ProtoTypeModel.h"
 #include "model/message/ProtoMessageModel.h"
 #include "QtCore/QByteArray"
+#include "QtCore/QDebug"
 #include "QtCore/QString"
 #include "QtCore/QSettings"
 #include "QtWidgets/QFileDialog"
@@ -71,7 +72,10 @@ public:
 		const auto files = settings.value("proto/files").toMap();
 		const auto directories = settings.value("proto/directories").toStringList();
 
+		// Register directory roots with proto files.
+		const auto protoRootDir = QStringLiteral("%1/protobuf").arg(QCoreApplication::applicationDirPath());
 		sourceTree = std::make_unique<google::protobuf::compiler::DiskSourceTree>();
+		sourceTree->MapPath("", QDir(protoRootDir).absolutePath().toStdString());
 		for (const auto& path : directories)
 			sourceTree->MapPath("", path.toStdString());
 
@@ -92,7 +96,6 @@ public:
 
 	void encode()
 	{
-
 	}
 
 	void decode()

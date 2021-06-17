@@ -61,3 +61,4 @@ class ProtoInfoConan(ConanFile):
 		self.copy("*.dylib*", dst="bin", src="lib")
 		
 		self.copy("*", dst="bin/plugins", src="plugins", root_package="Qt")
+		self.copy("google/protobuf/*.proto", dst="bin/protobuf", src="include", root_package="protobuf")

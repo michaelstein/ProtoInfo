@@ -142,6 +142,11 @@ MainWindow::MainWindow(QWidget* parent)
 	, d(std::make_unique<Private>(this))
 {
 	d->ui.setupUi(this);
+
+	QFont font("Monospace");
+	font.setStyleHint(QFont::TypeWriter);
+	d->ui.encodedEdit->setFont(font);
+
 	d->loadProto();
 }
 
@@ -162,7 +167,7 @@ void MainWindow::on_openFileButton_clicked(bool checked)
 		return;
 
 	const auto data = file.readAll();
-	const auto hex = QString::fromLatin1(data.toHex(' '));
+	const auto hex = QString::fromLatin1(data.toHex(' ')).toUpper();
 
 	d->ui.encodedEdit->setPlainText(hex);
 	d->ui.hexRadio->toggle();

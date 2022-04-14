@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.22)
 project(ProtoInfo)
 
 # basic cmake settings
@@ -12,11 +12,15 @@ if(WIN32)
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 endif(WIN32)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Include Conan build files
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
+
+set(CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}")
+set(CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}")
 
 # global include settings
 include_directories(${PROJECT_SOURCE_DIR}/src)
@@ -30,15 +34,11 @@ include(git-version.cmake)
 #
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTOUIC OFF)
-set(CMAKE_AUTORCC ON)
 
-find_package(Qt5Core REQUIRED)
-find_package(Qt5Gui REQUIRED)
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5Network REQUIRED)
-find_package(Qt5Concurrent REQUIRED)
+find_package(Qt6 COMPONENTS Core Widgets REQUIRED)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC OFF)
 
 #
 # SOURCES
@@ -55,7 +55,7 @@ source_group(
 	FILES ${headers} ${sources}
 )
 
-QT5_WRAP_UI(qtforms_generated ${qtforms})
+QT6_WRAP_UI(qtforms_generated ${qtforms})
 
 #
 # BINARIES
@@ -78,11 +78,7 @@ add_executable(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
 	PRIVATE CONAN_PKG::humblelogging
 	PRIVATE CONAN_PKG::protobuf
-	PUBLIC Qt5::Core
-	PUBLIC Qt5::Gui
-	PUBLIC Qt5::Widgets
-	PUBLIC Qt5::Network
-	PUBLIC Qt5::Concurrent
+	PUBLIC Qt6::Widgets
 )
 
 if(WIN32)
@@ -96,3 +92,5 @@ if(UNIX)
 		PRIVATE pthread
 	)
 endif(UNIX)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "${PROJECT_SOURCE_DIR}/res/qt.conf" $<TARGET_FILE_DIR:${PROJECT_NAME}>)

@@ -24,7 +24,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}")
 
 # global include settings
 include_directories(${PROJECT_SOURCE_DIR}/src)
-include_directories(${CONAN_INCLUDE_DIRS_GSL_MICROSOFT})
+include_directories(${CONAN_INCLUDE_DIRS_MS-GSL})
 
 # Git version information
 include(git-version.cmake)
